@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modification>
+    <id>Admin Siblings Orders</id>
+    <version>1.0</version>
+    <vqmver>2.6.0</vqmver>
+    <author></author>
+
+    <file name="admin/controller/sale/order.php">
+        <operation error="skip">
+            <search position="before"><![CDATA[if ($order_info['store_id'] == 0) {]]></search>
+            <add><![CDATA[
+				/* Siblings Orders */
+				$siblings_orders = $this->model_sale_order->getSiblingsOrders((int)$this->request->get['order_id']);
+				if(!empty($siblings_orders['next'])){
+					$data['next_order'] = $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . (int)$siblings_orders['next'], true);
+					$data['next_order_hint'] = 'نمایش سفارش بعدی (#' . $siblings_orders['next'] . ')';
+				}
+				if(!empty($siblings_orders['prev'])){
+					$data['prev_order'] = $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . (int)$siblings_orders['prev'], true);
+					$data['prev_order_hint'] = 'نمایش سفارش قبلی (#' . $siblings_orders['prev'] . ')';
+				}
+				/* Siblings Orders */
+			]]></add>
+        </operation>
+    </file>
+	
+    <file name="admin/model/sale/order.php">
+        <operation error="skip">
+            <search position="after"><![CDATA[class ModelSaleOrder extends Model {]]></search>
+            <add><![CDATA[
+				/* Siblings Orders */
+				public function getSiblingsOrders($order_id) {
+					$siblingsOrders = array();
+					$sql = "SELECT order_id FROM " . DB_PREFIX . "order WHERE order_id > " . (int)$order_id . " AND order_status_id > 0 ORDER BY order_id ASC LIMIT 1";
+					$query = $this->db->query($sql);
+					if($query->num_rows){
+						$siblingsOrders['next'] = $query->row['order_id'];
+					} else {
+						$sql = "SELECT order_id FROM " . DB_PREFIX . "order WHERE order_status_id > 0 ORDER BY order_id ASC LIMIT 1";
+						$query = $this->db->query($sql);
+						if($query->num_rows){
+							$siblingsOrders['next'] = $query->row['order_id'];
+						}
+					}
+					$sql = "SELECT order_id FROM " . DB_PREFIX . "order WHERE order_id < " . (int)$order_id . " AND order_status_id > 0 ORDER BY order_id DESC LIMIT 1";
+					$query = $this->db->query($sql);
+					if($query->num_rows){
+						$siblingsOrders['prev'] = $query->row['order_id'];
+					} else {
+						$sql = "SELECT order_id FROM " . DB_PREFIX . "order WHERE order_status_id > 0 ORDER BY order_id DESC LIMIT 1";
+						$query = $this->db->query($sql);
+						if($query->num_rows){
+							$siblingsOrders['prev'] = $query->row['order_id'];
+						}
+					}
+					
+					return $siblingsOrders;
+				}
+				/* Siblings Orders */
+			]]></add>
+        </operation>
+    </file>
+	
+    <file name="admin/view/template/sale/order_info.twig">
+        <operation error="skip">
+            <search position="replace"><![CDATA[<div class="pull-right">]]></search>
+            <add><![CDATA[
+				<!-- Siblings Orders -->
+				<div class="pull-right">
+				<div class="btn-group">
+					{% if next_order %}
+						<a href="{{ next_order }}" data-toggle="tooltip" title="{{ next_order_hint }}" class="btn btn-default">سفارش بعدی</a>
+					{% endif %}
+					{% if prev_order %}
+						<a href="{{ prev_order }}" data-toggle="tooltip" title="{{ prev_order_hint }}" class="btn btn-default">سفارش قبلی</a>
+					{% endif %}
+				</div>
+				<!-- Siblings Orders -->
+			]]></add>
+        </operation>
+    </file>
+
+</modification>
